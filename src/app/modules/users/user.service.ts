@@ -1,16 +1,18 @@
 /* eslint-disable prefer-const */
 import mongoose from 'mongoose';
-import { TAuthors, TAuthorsName } from './../authors/authors.interface';
+import { TAuthors} from './../authors/authors.interface';
 import { TUser } from './user.interface';
-import { generatedAuthorId } from './user.utils';
+import {generatedId } from './user.utils';
 import { User } from './user.modelAndSchema';
 import AppError from '../../Error/AppError';
 import status from 'http-status';
 import { Author } from '../authors/author.schemaAndModel';
+import { TAdmin } from '../admins/admin.interface';
+import { Admin } from '../admins/admin.modelAndSchema';
 const createAuthorIntoDB = async(password: string,email:string, authorData:TAuthors) => {
     console.log(email, password)
     let userData: Partial<TUser> = {};
-    userData.Id = await generatedAuthorId();
+    userData.Id = await generatedId('Author');
     userData.password = password;
     userData.email = email;
     userData.role = "Author";
@@ -48,55 +50,51 @@ const createAuthorIntoDB = async(password: string,email:string, authorData:TAuth
     
 };
 
-const getSingleUsersFromDB = async(_id) => {
+const getSingleUsersFromDB = async(_id:string) => {
     const result = await User.findById(_id);
     return result;
 }
-const blockedUserAndAuthorFromDB = async(_id: string) => {
-    //if author is not exist or already blocked
-   const user = await User.findById(_id);
-   if(!user){
-      throw new AppError(status.NOT_FOUND, "This user is not found")
-   };
-   if(user.status === "Blocked"){
-    throw new AppError(status.FORBIDDEN, "This user is already blocked!!");
-   }
 
-   const session = await mongoose.startSession();
-   session.startTransaction();
-   try{
-      const blockedUser = await User.findByIdAndUpdate(
-        _id,
-        {status: "Blocked"},
-        {new: true, session}
-      )
-      if(!blockedUser){
-        throw new AppError(status.BAD_REQUEST, "Faild to block user");
-      }
-      //find out user _id
-      const authorId = user.Id;
-    console.log(authorId)
-      const blockedAuthor = await Author.findOneAndUpdate(
-        {Id:authorId},
-        {status:"Blocked"},
-        {new: true, session}
-      )
-      if(!blockedAuthor){
-        throw new AppError(status.BAD_GATEWAY, "Failed to block author");
-      }
-      await session.commitTransaction();
-      await session.endSession();
-      return blockedAuthor;
-   }catch(err) {
-      await session.abortTransaction();
-      await session.endSession();
-      throw new AppError(status.BAD_REQUEST, err)
-   }
-};
+const createAdminIntoDB = async(password:string, email:string, adminData:TAdmin) => {
+    let userData: Partial<TUser> = {};
+    userData.password = password;
+    userData.email = email;
+    userData.role = "Admin";
+    userData.Id = await generatedId("Admin");
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try{
+       const newUser = await User.create([userData], {session});
+       if(!newUser.length){
+        throw new AppError(status.BAD_REQUEST, "Failed to create user");
+       }
+
+       adminData.Id = newUser[0].Id;
+       adminData.user = newUser[0]._id;
+       adminData.email = email
+       
+       const admin = await Admin.create([adminData], {session});
+       if(!admin.length){
+        throw new AppError(status.BAD_REQUEST, "Failed to create admin");
+       };
+
+       await session.commitTransaction();
+       await session.endSession();
+       return {
+         newUser, admin
+       }
+
+    }catch(err){
+          await session.abortTransaction();
+          await session.endSession();
+          throw new AppError(status.BAD_REQUEST, err)
+    }
+}
 
 
 export const UserServices = {
     createAuthorIntoDB,
-    blockedUserAndAuthorFromDB,
     getSingleUsersFromDB,
+    createAdminIntoDB,
 }

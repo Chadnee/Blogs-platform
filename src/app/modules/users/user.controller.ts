@@ -27,20 +27,20 @@ const getSingleUsers = catchAsync(async(req, res) => {
     })
 })
 
-const blockedUserAndAuthor = catchAsync(async(req, res) => {
-    const {user_Id} = req.params;
-    const result = await UserServices.blockedUserAndAuthorFromDB(user_Id);
+
+const createAdmin = catchAsync(async(req, res) => {
+    const {password, email, admin: adminData} = req.body;
+    const result = await UserServices.createAdminIntoDB(password, email, adminData);
     sendResponse(res, {
         statusCode: status.OK,
         success: true,
-        message: "The user as well as author is blocked !",
+        message: "Admin & User is created Succesfully",
         data: result,
     })
 })
 
-
 export const UserControllers = {
     createAuthor,
-    blockedUserAndAuthor,
     getSingleUsers,
+    createAdmin,
 }

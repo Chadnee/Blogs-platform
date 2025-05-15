@@ -6,6 +6,7 @@ import status from 'http-status';
 
 const getAllAuthors = catchAsync(async(req, res) => {
     const result = await AuthorsServices.getAllAuthorsFromDB();
+    //console.log('get cookies', req.cookies)
       sendResponse(res, {
         statusCode: status.OK,
         success: true,
@@ -37,10 +38,35 @@ const deleteAuthorsAndUsers = catchAsync(async(req, res) => {
     })
 });
 
+
+const blockedAuthorAndUser = catchAsync(async(req, res) => {
+    const {authors_id} = req.params;
+    const result = await AuthorsServices.blockedAuthorAndUserFromDB(authors_id);
+    sendResponse(res, {
+        statusCode: status.OK,
+        success: true,
+        message: "The user as well as author is blocked !",
+        data: result,
+    })
+});
+
+const updateAuthor = catchAsync(async(req, res) => {
+    const {authors_id} = req.params;
+    const result = await AuthorsServices.updateAuthorFRomDB(authors_id, req.body);
+    sendResponse(res, {
+        statusCode : status.OK,
+        success: true,
+        message: "All data are updated",
+        data: result,
+    })
+})
+
 export const AuthorsControllers = {
     getAllAuthors,
     getSingleAuthors,
     deleteAuthorsAndUsers,
+    blockedAuthorAndUser,
+    updateAuthor,
 
     
 }
